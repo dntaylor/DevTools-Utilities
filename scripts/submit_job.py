@@ -51,15 +51,14 @@ def get_config(args):
     config.General.transferOutputs  = True
 
     config.JobType.pluginName       = 'Analysis'
-    #if args.scriptExe:
-    #    config.JobType.psetName     = '{0}/src/DevTools/Utilities/test/PSet.py'.format(os.environ['CMSSW_BASE'])
-    #    config.JobType.scriptExe    = args.cfg
-    #else:
-    config.JobType.psetName         = args.cfg
-    config.JobType.pyCfgParams      = args.cmsRunArgs
-    #if args.scriptExe: # add in the outputFile
-    #    config.JobType.pyCfgParams += ['--outputFile=crab_out.root']
-    #    config.JobType.outputFiles  = ['crab_out.root']
+    if args.scriptExe:
+        config.JobType.psetName     = '{0}/src/DevTools/Utilities/test/PSet.py'.format(os.environ['CMSSW_BASE'])
+        config.JobType.scriptExe    = args.cfg
+        config.JobType.scriptArgs   = args.cmsRunArgs #+ ['outputFile=crab.root']
+        config.JobType.outputFiles  = ['crab.root']
+    else:
+        config.JobType.psetName     = args.cfg
+        config.JobType.pyCfgArgs    = args.cmsRunArgs
     config.JobType.sendPythonFolder = True
 
     config.Data.inputDBS            = args.inputDBS
@@ -80,6 +79,8 @@ def get_config(args):
         config.Data.allowNonValidInputDataset = True
 
     config.Site.storageSite         = args.site
+    if args.scriptExe:
+        config.Site.whitelist = ['T2_US_Wisconsin']
 
     return config
 
@@ -142,13 +143,39 @@ def submit_untracked_crab(args):
     submitMap = {}
     # iterate over samples
     for sample in sampleList:
+        if hasattr(args,'sampleFilter'):
+            submitSample = False
+            for sampleFilter in args.sampleFilter:
+                if fnmatch.fnmatch(sample,sampleFilter): submitSample = True
+            if not submitSample: continue
         primaryDataset = sample
         config.General.requestName = '{0}'.format(primaryDataset)
         # make it only 100 characters
         config.General.requestName = config.General.requestName[:99] # Warning: may not be unique now
         config.Data.outputPrimaryDataset = primaryDataset
         # get file list
-        config.Data.userInputFiles = get_hdfs_root_files(args.inputDirectory,sample)
+        inputFiles = get_hdfs_root_files(args.inputDirectory,sample)
+        config.Data.userInputFiles = inputFiles
+        totalFiles = len(inputFiles)
+        if totalFiles==0:
+            logging.warning('{0} {1} has no files.'.format(inputDirectory,sample))
+            continue
+        filesPerJob = args.filesPerJob
+        if args.gigabytesPerJob:
+            totalSize = hdfs_directory_size(os.path.join(args.inputDirectory,sample))
+            averageSize = totalSize/totalFiles
+            GB = 1024.*1024.*1024.
+            filesPerJob = int(math.ceil(args.gigabytesPerJob*GB/averageSize))
+        if hasattr(args,'jsonFilesPerJob') and args.jsonFilesPerJob:
+            if os.path.isfile(args.jsonFilesPerJob):
+                with open(args.jsonFilesPerJob) as f:
+                    data = json.load(f)
+                if sample in data:
+                    filesPerJob = data[sample]
+            else:
+                logging.error('JSON map {0} for jobs does not exist'.format(args.jsonFilesPerJob))
+                return
+        config.Data.unitsPerJob = filesPerJob
         # submit the job
         submitArgs = ['--config',config]
         if args.dryrun: submitArgs += ['--dryrun']
@@ -519,6 +546,10 @@ def parse_command_line(argv):
     parser_crabSubmit_inputs.add_argument('--inputDirectory', type=str,
         help='Top level directory to submit. Each subdirectory will create one crab job.'
     )
+    parser_crabSubmit.add_argument('--sampleFilter', type=str, nargs='*', default=['*'],
+        help='Only submit selected samples, unix wild cards allowed'
+    )
+
 
     parser_crabSubmit.add_argument('--applyLumiMask',type=str, default=None,
         choices=['Collisions15','ICHEP2016','Collisions16'],
@@ -530,11 +561,17 @@ def parse_command_line(argv):
         help='DAS instance to search for input files'
     )
 
-    parser_crabSubmit.add_argument('--filesPerJob', type=int, default=1,
+    parser_crabSubmit_jobs = parser_crabSubmit.add_mutually_exclusive_group()
+    parser_crabSubmit_jobs.add_argument('--filesPerJob', type=int, default=1,
         help='Number of files per job'
     )
-    parser_crabSubmit.add_argument('--lumisPerJob', type=int, default=30,
+
+    parser_crabSubmit_jobs.add_argument('--lumisPerJob', type=int, default=30,
         help='Number of lumis per job'
+    )
+
+    parser_crabSubmit_jobs.add_argument('--gigabytesPerJob', type=float, default=0,
+        help='Average jobs to process a given number of gigabytes'
     )
 
     parser_crabSubmit.add_argument('--allowNonValid', action='store_true', help='Allow non valid datasets from DAS')
@@ -547,7 +584,7 @@ def parse_command_line(argv):
         help='Site to write output files. Can check write pemissions with `crab checkwrite --site=<SITE>`.'
     )
 
-    #parser_crabSubmit.add_argument('--scriptExe', action='store_true', help='This is a script, not a cmsRun config')
+    parser_crabSubmit.add_argument('--scriptExe', action='store_true', help='This is a script, not a cmsRun config')
 
     parser_crabSubmit.set_defaults(submit=submit_crab)
 
