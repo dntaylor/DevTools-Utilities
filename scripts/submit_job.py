@@ -39,7 +39,7 @@ def get_scratch_area():
     if 'uwlogin' in gethostname():
         scratchDir = '/data'
     elif 'lpc' in gethostname():
-        scratchDir = '~/nobackup'
+        scratchDir = os.path.expanduser('~/nobackup')
     else:
         scratchDir = '/nfs_scratch' # default, wisconsin
     return scratchDir
