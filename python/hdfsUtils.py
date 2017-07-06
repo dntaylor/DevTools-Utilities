@@ -1,8 +1,10 @@
 import os
 import sys
-import subprocess
 import argparse
 
+from DevTools.Utilities.utilities import which, runCommand
+
+HAS_HDFS = which('hdfs')
 
 def strip_hdfs(directory):
     return '/'.join([x for x in directory.split('/') if x not in ['hdfs']])
@@ -11,7 +13,7 @@ def hdfs_ls_directory(storeDir):
     '''Utility for ls'ing /hdfs at UW'''
     storeDir = strip_hdfs(storeDir)
     command = 'gfal-ls srm://cmssrm2.hep.wisc.edu:8443/srm/v2/server?SFN=/hdfs/{0}'.format(storeDir)
-    out = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0]
+    out = runCommand(command)
     if 'gfal-ls' in out:
         log.error(out)
         return []
@@ -30,3 +32,29 @@ def get_hdfs_root_files(topDir,lastDir=''):
         else: # keep going down
             out += get_hdfs_root_files(lsDir,nl)
     return out
+
+def get_hdfs_directory_size(directory):
+    '''Get the size of a hdfs directory (in bytes).'''
+    if HAS_HDFS:
+        directory = strip_hdfs(directory)
+        command = 'gsido hdfs dfs -du -s {0}'.format(directory)
+        out = runCommand(command)
+        try:
+            return float(out.split()[0])
+        except:
+            print command
+            print out
+            raise
+    else:
+        totalSize = 0.
+        return totalSize # sorry, don't do it this way, too slow
+        for fname in get_hdfs_root_files(directory):
+            command = 'gfal-ls -l srm://cmssrm2.hep.wisc.edu:8443/srm/v2/server?SFN=/hdfs{0} | awk \'{{print $5;}}\''.format(strip_hdfs(directory))
+            out = runCommand(command)
+            try:
+                totalSize += float(out.split()[0])
+            except:
+                print command
+                print out
+                raise
+        return totalSize

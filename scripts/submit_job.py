@@ -31,14 +31,24 @@ try:
 except:
     crabLoaded = False
 
-from DevTools.Utilities.utilities import getJson, strip_hdfs, hdfs_ls_directory, get_hdfs_root_files
+from DevTools.Utilities.utilities import getJson
+from DevTools.Utilities.hdfsUtils import strip_hdfs, hdfs_ls_directory, get_hdfs_root_files, get_hdfs_directory_size
 
+def get_scratch_area():
+    '''Return a scratch area'''
+    if 'uwlogin' in gethostname():
+        scratchDir = '/data'
+    elif 'lpc' in gethostname():
+        scratchDir = '~/nobackup'
+    else:
+        scratchDir = '/nfs_scratch' # default, wisconsin
+    return scratchDir
 
 def get_crab_workArea(args):
     '''Get the job working area'''
     uname = os.environ['USER']
-    scratchDir = 'data' if 'uwlogin' in gethostname() else 'nfs_scratch'
-    return '/{0}/{1}/crab_projects/{2}'.format(scratchDir,uname,args.jobName)
+    scratchDir = get_scratch_area()
+    return '{0}/{1}/crab_projects/{2}'.format(scratchDir,uname,args.jobName)
 
 def get_config(args):
     '''Get a crab config file based on the arguments of crabSubmit'''
@@ -162,10 +172,11 @@ def submit_untracked_crab(args):
             continue
         filesPerJob = args.filesPerJob
         if args.gigabytesPerJob:
-            totalSize = hdfs_directory_size(os.path.join(args.inputDirectory,sample))
-            averageSize = totalSize/totalFiles
-            GB = 1024.*1024.*1024.
-            filesPerJob = int(math.ceil(args.gigabytesPerJob*GB/averageSize))
+            totalSize = get_hdfs_directory_size(os.path.join(args.inputDirectory,sample))
+            if totalSize:
+                averageSize = totalSize/totalFiles
+                GB = 1024.*1024.*1024.
+                filesPerJob = int(math.ceil(args.gigabytesPerJob*GB/averageSize))
         if hasattr(args,'jsonFilesPerJob') and args.jsonFilesPerJob:
             if os.path.isfile(args.jsonFilesPerJob):
                 with open(args.jsonFilesPerJob) as f:
@@ -339,16 +350,9 @@ def resubmit_crab(args):
 def get_condor_workArea(args):
     '''Get the job working area'''
     uname = os.environ['USER']
-    scratchDir = 'data' if 'uwlogin' in gethostname() else 'nfs_scratch'
-    return '/{0}/{1}/condor_projects/{2}'.format(scratchDir,uname,args.jobName)
+    scratchDir = get_scratch_area()
+    return '{0}/{1}/condor_projects/{2}'.format(scratchDir,uname,args.jobName)
 
-
-def hdfs_directory_size(directory):
-    '''Get the size of a hdfs directory (in bytes).'''
-    directory = strip_hdfs(directory)
-    command = 'gsido hdfs dfs -du -s {0}'.format(directory)
-    out = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0]
-    return float(out.split()[0])
 
 def submit_untracked_condor(args):
     '''Submit to condor using an input directory'''
@@ -357,7 +361,6 @@ def submit_untracked_condor(args):
     for inputDirectories in args.inputDirectory:
         for inputDirectory in glob.glob(inputDirectories):
             sampleList = hdfs_ls_directory(inputDirectory)
-            scratchDir = 'data' if 'uwlogin' in gethostname() else 'nfs_scratch'
 
             workArea = get_condor_workArea(args)
             os.system('mkdir -p {0}'.format(workArea))
