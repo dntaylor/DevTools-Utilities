@@ -46,6 +46,10 @@ def get_scratch_area():
         scratchDir = '/nfs_scratch' # default, wisconsin
     return scratchDir
 
+#######################
+### Crab submission ###
+#######################
+
 def get_crab_workArea(args):
     '''Get the job working area'''
     scratchDir = get_scratch_area()
@@ -347,6 +351,10 @@ def resubmit_crab(args):
         if statMap['status'] != 'SUCCESS':
             log.info('Status: {0} - {1}'.format(statMap['status'],d))
 
+#########################
+### Condor submission ###
+#########################
+
 def get_condor_workArea(args):
     '''Get the job working area'''
     scratchDir = get_scratch_area()
@@ -523,6 +531,95 @@ def status_condor(args):
     for s in allowedStatuses:
         if total[s]: log.info('{0:20}: {1}'.format(s,total[s]))
 
+############################
+### Command line options ###
+############################
+
+def add_common_submit(parser):
+    parser.add_argument('jobName', type=str, help='Job Name for submission')
+    parser.add_argument('cfg', type=str, help='cmsRun config file or user script')
+    parser.add_argument('cmsRunArgs', nargs='*', help='Arguments passed to cmsRun/script')
+    parser.add_argument('--scriptExe', action='store_true', help='This is a script, not a cmsRun config')
+
+def add_common_inputs(parser):
+    # job inputs
+    parser_inputs = parser.add_mutually_exclusive_group(required=True)
+    parser_inputs.add_argument('--samples', type=str, nargs='*',
+        help='Space delimited list of DAS samples to submit'
+    )
+    parser_inputs.add_argument('--sampleList', type=str,
+        help='Text file list of DAS samples to submit, one per line'
+    )
+    parser_inputs.add_argument('--inputDirectory', type=str,
+        help='Top level directory to submit. Each subdirectory will create one crab job.'
+    )
+    parser.add_argument('--sampleFilter', type=str, nargs='*', default=['*'],
+        help='Only submit selected samples, unix wild cards allowed'
+    )
+
+    parser.add_argument('--applyLumiMask',type=str, default=None,
+        choices=['Collisions15','ICHEP2016','Collisions16'],
+        help='Apply the latest golden json run lumimask to data'
+    )
+
+    parser.add_argument('--inputDBS', type=str, default='global',
+        choices=['global','phys01','phys02','phys03'], 
+        help='DAS instance to search for input files'
+    )
+
+    parser.add_argument('--allowNonValid', action='store_true', help='Allow non valid datasets from DAS')
+
+
+def add_common_splitting(parser):
+    # job splitting
+    parser_jobs = parser.add_mutually_exclusive_group()
+    parser_jobs.add_argument('--filesPerJob', type=int, default=1,
+        help='Number of files per job'
+    )
+
+    parser_jobs.add_argument('--lumisPerJob', type=int, default=30,
+        help='Number of lumis per job'
+    )
+
+    parser_jobs.add_argument('--gigabytesPerJob', type=float, default=0,
+        help='Average jobs to process a given number of gigabytes'
+    )
+
+    #parser_jobs.add_argument('--jobsPerFile', type=int, default=1,
+    #    help='Number of jobs per file. File list will be of the form "fname/njobs/job"'
+    #)
+
+    parser_jobs.add_argument('--jsonFilesPerJob', type=str, default='',
+        help='Number of files per job in form of a json file with "sample":num pairs'
+    )
+
+def add_common_resubmit(parser):
+    parser_directories = parser.add_mutually_exclusive_group(required=True)
+    parser_directories.add_argument('--jobName', type=str, help='Job name from submission')
+    parser_directories.add_argument('--directories', type=str, nargs="*",
+        help='Space separated list of submission directories. Unix wild-cards allowed.',
+    )
+    parser.add_argument('--verbose', action='store_true', help='Verbose status summary')
+
+
+def add_common_condor(parser):
+    parser.add_argument('--vsize', type=int, default=0, help='Override default vsize for condor')
+    parser.add_argument('--useAFS', action='store_true', help='Read from AFS rather than creating a usercode')
+    parser.add_argument('--resubmit', action='store_true', help='Resubmit failed jobs')
+    parser.add_argument('--useHDFS', action='store_true', help='Use HDFS to read files')
+    parser.add_argument('--dryrun', action='store_true', help='Do not submit jobs')
+    parser.add_argument('--user', type=str, default=UNAME, help='Username for grid storage. i.e. /store/user/[username]/')
+
+
+def add_common_crab(parser):
+    parser.add_argument('--publish', action='store_true', help='Publish output to DBS')
+    parser.add_argument('--site', type=str, default='T2_US_Wisconsin',
+        help='Site to write output files. Can check write pemissions with `crab checkwrite --site=<SITE>`.'
+    )
+    parser.add_argument('--dryrun', action='store_true', help='Do not submit jobs')
+    parser.add_argument('--user', type=str, default=UNAME, help='Username for grid storage. i.e. /store/user/[username]/')
+
+
 def parse_command_line(argv):
     parser = argparse.ArgumentParser(description='Submit jobs to grid')
 
@@ -531,210 +628,40 @@ def parse_command_line(argv):
 
     # crabSubmit
     parser_crabSubmit = subparsers.add_parser('crabSubmit', help='Submit jobs via crab')
-    parser_crabSubmit.add_argument('jobName', type=str, help='Job Name for submission')
-    parser_crabSubmit.add_argument('cfg', type=str, help='cmsRun config file or user script')
-    parser_crabSubmit.add_argument('cmsRunArgs', nargs='*', 
-        help='Arguments passed to cmsRun/script'
-    )
-
-    parser_crabSubmit_inputs = parser_crabSubmit.add_mutually_exclusive_group(required=True)
-    parser_crabSubmit_inputs.add_argument('--samples', type=str, nargs='*',
-        help='Space delimited list of DAS samples to submit'
-    )
-    parser_crabSubmit_inputs.add_argument('--sampleList', type=str,
-        help='Text file list of DAS samples to submit, one per line'
-    )
-    parser_crabSubmit_inputs.add_argument('--inputDirectory', type=str,
-        help='Top level directory to submit. Each subdirectory will create one crab job.'
-    )
-    parser_crabSubmit.add_argument('--sampleFilter', type=str, nargs='*', default=['*'],
-        help='Only submit selected samples, unix wild cards allowed'
-    )
-
-
-    parser_crabSubmit.add_argument('--applyLumiMask',type=str, default=None,
-        choices=['Collisions15','ICHEP2016','Collisions16'],
-        help='Apply the latest golden json run lumimask to data'
-    )
-
-    parser_crabSubmit.add_argument('--inputDBS', type=str, default='global',
-        choices=['global','phys01','phys02','phys03'], 
-        help='DAS instance to search for input files'
-    )
-
-    parser_crabSubmit_jobs = parser_crabSubmit.add_mutually_exclusive_group()
-    parser_crabSubmit_jobs.add_argument('--filesPerJob', type=int, default=1,
-        help='Number of files per job'
-    )
-
-    parser_crabSubmit_jobs.add_argument('--lumisPerJob', type=int, default=30,
-        help='Number of lumis per job'
-    )
-
-    parser_crabSubmit_jobs.add_argument('--gigabytesPerJob', type=float, default=0,
-        help='Average jobs to process a given number of gigabytes'
-    )
-
-    parser_crabSubmit.add_argument('--allowNonValid', action='store_true', help='Allow non valid datasets from DAS')
-
-    parser_crabSubmit.add_argument('--publish', action='store_true', help='Publish output to DBS')
-
-    parser_crabSubmit.add_argument('--dryrun', action='store_true', help='Do not submit jobs')
-
-    parser_crabSubmit.add_argument('--site', type=str, default='T2_US_Wisconsin',
-        help='Site to write output files. Can check write pemissions with `crab checkwrite --site=<SITE>`.'
-    )
-
-    parser_crabSubmit.add_argument('--user', type=str, default=UNAME,
-        help='Username for grid storage. i.e. /store/user/[username]/'
-    )
-
-    parser_crabSubmit.add_argument('--scriptExe', action='store_true', help='This is a script, not a cmsRun config')
-
+    add_common_submit(parser_crabSubmit)
+    add_common_inputs(parser_crabSubmit)
+    add_common_splitting(parser_crabSubmit)
+    add_common_crab(parser_crabSubmit)
     parser_crabSubmit.set_defaults(submit=submit_crab)
 
     # crabStatus
     parser_crabStatus = subparsers.add_parser('crabStatus', help='Check job status via crab')
-
-    parser_crabStatus_directories = parser_crabStatus.add_mutually_exclusive_group(required=True)
-    parser_crabStatus_directories.add_argument('--jobName', type=str, help='Job name from submission')
-    parser_crabStatus_directories.add_argument('--crabDirectories', type=str, nargs="*",
-        help='Space separated list of crab submission directories. Unix wild-cards allowed.',
-    )
-
-    parser_crabStatus.add_argument('--verbose', action='store_true', help='Verbose status summary')
-
+    add_common_resubmit(parser_crabStatus)
     parser_crabStatus.set_defaults(submit=status_crab)
 
     # crabResubmit
     parser_crabResubmit = subparsers.add_parser('crabResubmit', help='Resubmit crab jobs')
-
-    parser_crabResubmit_directories = parser_crabResubmit.add_mutually_exclusive_group(required=True)
-    parser_crabResubmit_directories.add_argument('--jobName', type=str, help='Job name from submission')
-    parser_crabResubmit_directories.add_argument('--crabDirectories', type=str, nargs="*",
-        help='Space separated list of crab submission directories. Unix wild-cards allowed.',
-    )
-
+    add_common_resubmit(parser_crabResubmit)
     parser_crabResubmit.set_defaults(submit=resubmit_crab)
 
     # condorSubmit
     parser_condorSubmit = subparsers.add_parser('condorSubmit', help='Submit jobs via condor')
-    parser_condorSubmit.add_argument('jobName', type=str, help='Job Name for submission')
-    parser_condorSubmit.add_argument('cfg', type=str, help='cmsRun config file')
-    parser_condorSubmit.add_argument('cmsRunArgs', nargs='*', 
-        help='VarParsing arguments passed to cmsRun'
-    )
-
-    parser_condorSubmit_inputs = parser_condorSubmit.add_mutually_exclusive_group(required=True)
-    parser_condorSubmit_inputs.add_argument('--samples', type=str, nargs='*',
-        help='Space delimited list of DAS samples to submit'
-    )
-    parser_condorSubmit_inputs.add_argument('--sampleList', type=str,
-        help='Text file list of DAS samples to submit, one per line'
-    )
-    parser_condorSubmit_inputs.add_argument('--inputDirectory', type=str, nargs='*',
-        help='Top level directory to submit (unix wildcards allowed). Each subdirectory will create one condor job.'
-    )
-
-    parser_condorSubmit.add_argument('--sampleFilter', type=str, nargs='*', default=['*'],
-        help='Only submit selected samples, unix wild cards allowed'
-    )
-
-    parser_condorSubmit.add_argument('--applyLumiMask',type=str, default=None,
-        choices=['Collisions15','ICHEP2016','Collisions16'],
-        help='Apply the latest golden json run lumimask to data'
-    )
-
-    parser_condorSubmit.add_argument('--inputDBS', type=str, default='global',
-        choices=['global','phys01','phys02','phys03'], 
-        help='DAS instance to search for input files'
-    )
-
-    parser_condorSubmit_jobs = parser_condorSubmit.add_mutually_exclusive_group()
-    parser_condorSubmit_jobs.add_argument('--filesPerJob', type=int, default=1,
-        help='Number of files per job'
-    )
-
-    parser_condorSubmit_jobs.add_argument('--gigabytesPerJob', type=float, default=0,
-        help='Average jobs to process a given number of gigabytes'
-    )
-
-    parser_condorSubmit_jobs.add_argument('--jobsPerFile', type=int, default=1,
-        help='Number of jobs per file. File list will be of the form "fname/njobs/job"'
-    )
-
-    parser_condorSubmit_jobs.add_argument('--jsonFilesPerJob', type=str, default='',
-        help='Number of files per job in form of a json file with "sample":num pairs'
-    )
-
-    parser_condorSubmit.add_argument('--vsize', type=int, default=0, help='Override default vsize for condor')
-
-    parser_condorSubmit.add_argument('--dryrun', action='store_true', help='Do not submit jobs')
-
-    parser_condorSubmit.add_argument('--useAFS', action='store_true', help='Read from AFS rather than creating a usercode')
-
-    parser_condorSubmit.add_argument('--resubmit', action='store_true', help='Resubmit failed jobs')
-
-    parser_condorSubmit.add_argument('--useHDFS', action='store_true', help='Use HDFS to read files')
-
-    parser_condorSubmit.add_argument('--scriptExe', action='store_true', help='This is a script, not a cmsRun config')
-
-    parser_condorSubmit.add_argument('--user', type=str, default=UNAME,
-        help='Username for grid storage. i.e. /store/user/[username]/'
-    )
-
+    add_common_submit(parser_condorSubmit)
+    add_common_inputs(parser_condorSubmit)
+    add_common_splitting(parser_condorSubmit)
+    add_common_condor(parser_condorSubmit)
     parser_condorSubmit.set_defaults(submit=submit_condor)
 
     # condorStatus
     parser_condorStatus = subparsers.add_parser('condorStatus', help='Check job status via condor')
-
-    parser_condorStatus_directories = parser_condorStatus.add_mutually_exclusive_group(required=True)
-    parser_condorStatus_directories.add_argument('--jobName', type=str, help='Job name from submission')
-    parser_condorStatus_directories.add_argument('--condorDirectories', type=str, nargs="*",
-        help='Space separated list of condor submission directories. Unix wild-cards allowed.',
-    )
-
-    parser_condorStatus.add_argument('--verbose', action='store_true', help='Verbose status summary')
-
+    add_common_resubmit(parser_condorStatus)
     parser_condorStatus.set_defaults(submit=status_condor)
 
     # condorMerge
     parser_condorMerge = subparsers.add_parser('condorMerge', help='Submit merge job via condor')
     parser_condorMerge.add_argument('jobName', type=str, help='Job Name for submission')
-
-    parser_condorMerge_inputs = parser_condorMerge.add_mutually_exclusive_group(required=True)
-
-    parser_condorMerge_inputs.add_argument('--inputDirectory', type=str, nargs='*',
-        help='Top level directory to submit (unix wildcards allowed). Each subdirectory will create one condor job.'
-    )
-
-    parser_condorMerge_jobs = parser_condorMerge.add_mutually_exclusive_group(required=True)
-    parser_condorMerge_jobs.add_argument('--filesPerJob', type=int, default=1,
-        help='Number of files per job'
-    )
-
-    parser_condorMerge_jobs.add_argument('--gigabytesPerJob', type=float, default=0,
-        help='Average jobs to process a given number of gigabytes'
-    )
-
-    parser_condorMerge_jobs.add_argument('--jobsPerFile', type=int, default=1,
-        help='Number of jobs per file. File list will be of the form "fname/njobs/job"'
-    )
-
-    parser_condorMerge.add_argument('--vsize', type=int, default=0, help='Override default vsize for condor')
-
-    parser_condorMerge.add_argument('--dryrun', action='store_true', help='Do not submit jobs')
-
-    parser_condorMerge.add_argument('--useHDFS', action='store_true', help='Use HDFS to read files')
-
-    parser_condorMerge.add_argument('--useAFS', action='store_true', help='Read from AFS rather than creating a usercode')
-
-    parser_condorMerge.add_argument('--resubmit', action='store_true', help='Resubmit failed jobs')
-
-    parser_condorMerge.add_argument('--user', type=str, default=UNAME,
-        help='Username for grid storage. i.e. /store/user/[username]/'
-    )
-
+    add_common_inputs(parser_condorMerge)
+    add_common_condor(parser_condorMerge)
     parser_condorMerge.set_defaults(submit=submit_condor)
 
     return parser.parse_args(argv)
