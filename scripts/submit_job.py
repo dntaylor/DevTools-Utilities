@@ -33,6 +33,8 @@ except:
 
 from DevTools.Utilities.utilities import getJson
 from DevTools.Utilities.hdfsUtils import strip_hdfs, hdfs_ls_directory, get_hdfs_root_files, get_hdfs_directory_size
+    
+UNAME = os.environ['USER']
 
 def get_scratch_area():
     '''Return a scratch area'''
@@ -46,13 +48,11 @@ def get_scratch_area():
 
 def get_crab_workArea(args):
     '''Get the job working area'''
-    uname = os.environ['USER']
     scratchDir = get_scratch_area()
-    return '{0}/{1}/crab_projects/{2}'.format(scratchDir,uname,args.jobName)
+    return '{0}/{1}/crab_projects/{2}'.format(scratchDir,UNAME,args.jobName)
 
 def get_config(args):
     '''Get a crab config file based on the arguments of crabSubmit'''
-    uname = os.environ['USER']
     from CRABClient.UserUtilities import config
 
     config = config()
@@ -78,7 +78,7 @@ def get_config(args):
     #config.Data.unitsPerJob         = 10
     #config.Data.splitting           = 'EventAwareLumiBased'
     #config.Data.unitsPerJob         = 100000
-    config.Data.outLFNDirBase       = '/store/user/{0}/{1}/'.format(uname,args.jobName)
+    config.Data.outLFNDirBase       = '/store/user/{0}/{1}/'.format(args.user,args.jobName)
     config.Data.publication         = args.publish
     config.Data.outputDatasetTag    = args.jobName
     if args.applyLumiMask:
@@ -349,14 +349,12 @@ def resubmit_crab(args):
 
 def get_condor_workArea(args):
     '''Get the job working area'''
-    uname = os.environ['USER']
     scratchDir = get_scratch_area()
-    return '{0}/{1}/condor_projects/{2}'.format(scratchDir,uname,args.jobName)
+    return '{0}/{1}/condor_projects/{2}'.format(scratchDir,UNAME,args.jobName)
 
 
 def submit_untracked_condor(args):
     '''Submit to condor using an input directory'''
-    uname = os.environ['USER']
     # get samples
     for inputDirectories in args.inputDirectory:
         for inputDirectory in glob.glob(inputDirectories):
@@ -421,7 +419,7 @@ def submit_untracked_condor(args):
                 if args.useAFS:
                     command += ' --shared-fs'
                 # output directory
-                outputDir = 'srm://cmssrm2.hep.wisc.edu:8443/srm/v2/server?SFN=/hdfs/store/user/{0}/{1}/{2}'.format(uname,args.jobName,sample)
+                outputDir = 'srm://cmssrm2.hep.wisc.edu:8443/srm/v2/server?SFN=/hdfs/store/user/{0}/{1}/{2}'.format(args.user,args.jobName,sample)
                 command += ' --output-dir={0}'.format(outputDir)
                 if args.useHDFS: command += ' --use-hdfs'
                 if args.resubmit: command += ' --resubmit-failed-jobs'
@@ -587,6 +585,10 @@ def parse_command_line(argv):
         help='Site to write output files. Can check write pemissions with `crab checkwrite --site=<SITE>`.'
     )
 
+    parser_crabSubmit.add_argument('--user', type=str, default=UNAME,
+        help='Username for grid storage. i.e. /store/user/[username]/'
+    )
+
     parser_crabSubmit.add_argument('--scriptExe', action='store_true', help='This is a script, not a cmsRun config')
 
     parser_crabSubmit.set_defaults(submit=submit_crab)
@@ -677,6 +679,10 @@ def parse_command_line(argv):
 
     parser_condorSubmit.add_argument('--scriptExe', action='store_true', help='This is a script, not a cmsRun config')
 
+    parser_condorSubmit.add_argument('--user', type=str, default=UNAME,
+        help='Username for grid storage. i.e. /store/user/[username]/'
+    )
+
     parser_condorSubmit.set_defaults(submit=submit_condor)
 
     # condorStatus
@@ -724,6 +730,10 @@ def parse_command_line(argv):
     parser_condorMerge.add_argument('--useAFS', action='store_true', help='Read from AFS rather than creating a usercode')
 
     parser_condorMerge.add_argument('--resubmit', action='store_true', help='Resubmit failed jobs')
+
+    parser_condorMerge.add_argument('--user', type=str, default=UNAME,
+        help='Username for grid storage. i.e. /store/user/[username]/'
+    )
 
     parser_condorMerge.set_defaults(submit=submit_condor)
 
