@@ -39,11 +39,11 @@ UNAME = os.environ['USER']
 def get_scratch_area():
     '''Return a scratch area'''
     if 'uwlogin' in gethostname():
-        scratchDir = '/data'
+        scratchDir = '/data/{0}'.format(UNAME)
     elif 'lpc' in gethostname():
         scratchDir = os.path.expanduser('~/nobackup')
     else:
-        scratchDir = '/nfs_scratch' # default, wisconsin
+        scratchDir = '/nfs_scratch/{0}'.format(UNAME) # default, wisconsin
     return scratchDir
 
 #######################
@@ -53,7 +53,7 @@ def get_scratch_area():
 def get_crab_workArea(args):
     '''Get the job working area'''
     scratchDir = get_scratch_area()
-    return '{0}/{1}/crab_projects/{2}'.format(scratchDir,UNAME,args.jobName)
+    return '{0}/crab_projects/{1}'.format(scratchDir,args.jobName)
 
 def get_config(args):
     '''Get a crab config file based on the arguments of crabSubmit'''
@@ -358,7 +358,7 @@ def resubmit_crab(args):
 def get_condor_workArea(args):
     '''Get the job working area'''
     scratchDir = get_scratch_area()
-    return '{0}/{1}/condor_projects/{2}'.format(scratchDir,UNAME,args.jobName)
+    return '{0}/condor_projects/{1}'.format(scratchDir,args.jobName)
 
 
 def submit_untracked_condor(args):
