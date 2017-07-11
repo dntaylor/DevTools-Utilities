@@ -558,7 +558,7 @@ def add_common_inputs(parser):
     )
 
     parser.add_argument('--applyLumiMask',type=str, default=None,
-        choices=['Collisions15','ICHEP2016','Collisions16'],
+        choices=['Collisions15','ICHEP2016','Collisions16','Collisions17'],
         help='Apply the latest golden json run lumimask to data'
     )
 
