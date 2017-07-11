@@ -23,6 +23,9 @@ jsons = {
     'Collisions16': '/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/'\
                     'Collisions16/13TeV/'\
                     'ReReco/Final/Cert_271036-284044_13TeV_23Sep2016ReReco_Collisions16_JSON.txt', # 36.46/fb
+    'Collisions17': '/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/'\
+                    'Collisions16/13TeV/'\
+                    'PromptReco/Cert_294927-297723_13TeV_PromptReco_Collisions17_JSON.txt', # 3.785/fb
 }
 
 def getJson(runPeriod):
