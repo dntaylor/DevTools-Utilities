@@ -72,7 +72,7 @@ def get_config(args):
         config.JobType.outputFiles  = ['crab.root']
     else:
         config.JobType.psetName     = args.cfg
-        config.JobType.pyCfgArgs    = args.cmsRunArgs
+        config.JobType.pyCfgParams  = args.cmsRunArgs
     config.JobType.sendPythonFolder = True
 
     config.Data.inputDBS            = args.inputDBS
