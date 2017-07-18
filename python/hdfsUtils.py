@@ -1,5 +1,6 @@
 import os
 import sys
+import logging
 import argparse
 
 from DevTools.Utilities.utilities import which, runCommand
@@ -15,7 +16,8 @@ def hdfs_ls_directory(storeDir):
     command = 'gfal-ls srm://cmssrm2.hep.wisc.edu:8443/srm/v2/server?SFN=/hdfs/{0}'.format(storeDir)
     out = runCommand(command)
     if 'gfal-ls' in out:
-        log.error(out)
+        logging.error(command)
+        logging.error(out)
         return []
     return out.split()
 

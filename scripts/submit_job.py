@@ -364,81 +364,79 @@ def get_condor_workArea(args):
 def submit_untracked_condor(args):
     '''Submit to condor using an input directory'''
     # get samples
-    for inputDirectories in args.inputDirectory:
-        for inputDirectory in glob.glob(inputDirectories):
-            sampleList = hdfs_ls_directory(inputDirectory)
+    sampleList = hdfs_ls_directory(args.inputDirectory)
 
-            workArea = get_condor_workArea(args)
-            os.system('mkdir -p {0}'.format(workArea))
+    workArea = get_condor_workArea(args)
+    os.system('mkdir -p {0}'.format(workArea))
 
-            submitMap = {}
-            # iterate over samples
-            for sample in sampleList:
-                if hasattr(args,'sampleFilter'):
-                    submitSample = False
-                    for sampleFilter in args.sampleFilter:
-                        if fnmatch.fnmatch(sample,sampleFilter): submitSample = True
-                    if not submitSample: continue
-                # farmout config
-                command = 'farmoutAnalysisJobs --infer-cmssw-path --input-basenames-not-unique'
-                if hasattr(args,'scriptExe') and args.scriptExe:
-                    command += ' --fwklite'
-                # submit dir
-                submitDir = '{0}/{1}'.format(workArea, sample)
-                command += ' --submit-dir={0}'.format(submitDir)
-                if os.path.exists(submitDir) and not args.resubmit:
-                    logging.warning('Submit directory exists {0}'.format(submitDir))
-                    continue
-                # input files
-                inputFiles = get_hdfs_root_files(inputDirectory,sample)
-                totalFiles = len(inputFiles)
-                if totalFiles==0:
-                    logging.warning('{0} {1} has no files.'.format(inputDirectory,sample))
-                    continue
-                fileList = '{0}_inputs.txt'.format(submitDir)
-                with open(fileList,'w') as f:
-                    if args.jobsPerFile>1:
-                        jobStrings = []
-                        for job in range(args.jobsPerFile):
-                            for inputFile in inputFiles:
-                                jobStrings += ['{0}/{1}/{2}'.format(inputFile,args.jobsPerFile,job)]
-                        f.write('\n'.join(jobStrings))
-                    else:
-                        f.write('\n'.join(inputFiles))
-                filesPerJob = args.filesPerJob
-                if args.jobsPerFile>1: filesPerJob = len(inputFiles)
-                if args.gigabytesPerJob:
-                    totalSize = hdfs_directory_size(os.path.join(inputDirectory,sample))
-                    averageSize = totalSize/totalFiles
-                    GB = 1024.*1024.*1024.
-                    filesPerJob = int(math.ceil(args.gigabytesPerJob*GB/averageSize))
-                if hasattr(args,'jsonFilesPerJob') and args.jsonFilesPerJob:
-                    if os.path.isfile(args.jsonFilesPerJob):
-                        with open(args.jsonFilesPerJob) as f:
-                            data = json.load(f)
-                        if sample in data:
-                            filesPerJob = data[sample]
-                    else:
-                        logging.error('JSON map {0} for jobs does not exist'.format(args.jsonFilesPerJob))
-                        return
-                command += ' --input-file-list={0} --assume-input-files-exist --input-files-per-job={1}'.format(fileList,filesPerJob)
-                if args.vsize:
-                    command += ' --vsize-limit={0}'.format(args.vsize)
-                if args.useAFS:
-                    command += ' --shared-fs'
-                # output directory
-                outputDir = 'srm://cmssrm2.hep.wisc.edu:8443/srm/v2/server?SFN=/hdfs/store/user/{0}/{1}/{2}'.format(args.user,args.jobName,sample)
-                command += ' --output-dir={0}'.format(outputDir)
-                if args.useHDFS: command += ' --use-hdfs'
-                if args.resubmit: command += ' --resubmit-failed-jobs'
-                if hasattr(args,'cfg'):
-                    command += ' {0} {1} {2}'.format(args.jobName, args.cfg, ' '.join(args.cmsRunArgs))
-                else: # its a merge
-                    command += ' --merge {0}'.format(args.jobName)
-                if args.dryrun:
-                    logging.info(command)
-                else:
-                    os.system(command)
+    submitMap = {}
+    # iterate over samples
+    for sample in sampleList:
+        if hasattr(args,'sampleFilter'):
+            submitSample = False
+            for sampleFilter in args.sampleFilter:
+                if fnmatch.fnmatch(sample,sampleFilter): submitSample = True
+            if not submitSample: continue
+        # farmout config
+        command = 'farmoutAnalysisJobs --infer-cmssw-path --input-basenames-not-unique'
+        if hasattr(args,'scriptExe') and args.scriptExe:
+            command += ' --fwklite'
+        # submit dir
+        submitDir = '{0}/{1}'.format(workArea, sample)
+        command += ' --submit-dir={0}'.format(submitDir)
+        if os.path.exists(submitDir) and not args.resubmit:
+            logging.warning('Submit directory exists {0}'.format(submitDir))
+            continue
+        # input files
+        inputFiles = get_hdfs_root_files(args.inputDirectory,sample)
+        totalFiles = len(inputFiles)
+        if totalFiles==0:
+            logging.warning('{0} {1} has no files.'.format(args.inputDirectory,sample))
+            continue
+        fileList = '{0}_inputs.txt'.format(submitDir)
+        with open(fileList,'w') as f:
+            #if args.jobsPerFile>1:
+            #    jobStrings = []
+            #    for job in range(args.jobsPerFile):
+            #        for inputFile in inputFiles:
+            #            jobStrings += ['{0}/{1}/{2}'.format(inputFile,args.jobsPerFile,job)]
+            #    f.write('\n'.join(jobStrings))
+            #else:
+            f.write('\n'.join(inputFiles))
+        filesPerJob = args.filesPerJob
+        #if args.jobsPerFile>1: filesPerJob = len(inputFiles)
+        if args.gigabytesPerJob:
+            totalSize = get_hdfs_directory_size(os.path.join(args.inputDirectory,sample))
+            averageSize = totalSize/totalFiles
+            GB = 1024.*1024.*1024.
+            filesPerJob = int(math.ceil(args.gigabytesPerJob*GB/averageSize))
+        if hasattr(args,'jsonFilesPerJob') and args.jsonFilesPerJob:
+            if os.path.isfile(args.jsonFilesPerJob):
+                with open(args.jsonFilesPerJob) as f:
+                    data = json.load(f)
+                if sample in data:
+                    filesPerJob = data[sample]
+            else:
+                logging.error('JSON map {0} for jobs does not exist'.format(args.jsonFilesPerJob))
+                return
+        command += ' --input-file-list={0} --assume-input-files-exist --input-files-per-job={1}'.format(fileList,filesPerJob)
+        if args.vsize:
+            command += ' --vsize-limit={0}'.format(args.vsize)
+        if args.useAFS:
+            command += ' --shared-fs'
+        # output directory
+        outputDir = 'srm://cmssrm2.hep.wisc.edu:8443/srm/v2/server?SFN=/hdfs/store/user/{0}/{1}/{2}'.format(args.user,args.jobName,sample)
+        command += ' --output-dir={0}'.format(outputDir)
+        if args.useHDFS: command += ' --use-hdfs'
+        if args.resubmit: command += ' --resubmit-failed-jobs'
+        if hasattr(args,'cfg'):
+            command += ' {0} {1} {2}'.format(args.jobName, args.cfg, ' '.join(args.cmsRunArgs))
+        else: # its a merge
+            command += ' --merge {0}'.format(args.jobName)
+        if args.dryrun:
+            logging.info(command)
+        else:
+            os.system(command)
         
 
 def submit_condor(args):
@@ -551,7 +549,7 @@ def add_common_inputs(parser):
         help='Text file list of DAS samples to submit, one per line'
     )
     parser_inputs.add_argument('--inputDirectory', type=str,
-        help='Top level directory to submit. Each subdirectory will create one crab job.'
+        help='Top level directory to submit. Each subdirectory will create one job.'
     )
     parser.add_argument('--sampleFilter', type=str, nargs='*', default=['*'],
         help='Only submit selected samples, unix wild cards allowed'
