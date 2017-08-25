@@ -225,8 +225,8 @@ def status_crab(args):
     if args.jobName:
         workArea = get_crab_workArea(args)
         crab_dirs += sorted(glob.glob('{0}/*'.format(workArea)))
-    elif args.crabDirectories:
-        for d in args.crabDirectories:
+    elif args.directories:
+        for d in args.directories:
             crab_dirs += glob.glob(d)
     else:
         log.error("Shouldn't be possible to get here")
@@ -307,8 +307,8 @@ def resubmit_crab(args):
     if args.jobName:
         workArea = get_crab_workArea(args)
         crab_dirs += sorted(glob.glob('{0}/*'.format(workArea)))
-    elif args.crabDirectories:
-        for d in args.crabDirectories:
+    elif args.directories:
+        for d in args.directories:
             crab_dirs += glob.glob(d)
     else:
         log.error("Shouldn't be possible to get here")
@@ -660,6 +660,7 @@ def parse_command_line(argv):
     parser_condorMerge.add_argument('jobName', type=str, help='Job Name for submission')
     add_common_inputs(parser_condorMerge)
     add_common_condor(parser_condorMerge)
+    add_common_splitting(parser_condorMerge)
     parser_condorMerge.set_defaults(submit=submit_condor)
 
     return parser.parse_args(argv)
