@@ -7,6 +7,8 @@ options.outputFile = 'events.root'
 options.inputFiles = '/store/data/Run2016G/DoubleMuon/MINIAOD/23Sep2016-v1/100000/0A30F7A9-ED8F-E611-91F1-008CFA1C6564.root' # ReReco
 options.maxEvents = 1
 
+options.parseArguments()
+
 process = cms.Process("PickEvent")
 
 process.source = cms.Source ("PoolSource",
