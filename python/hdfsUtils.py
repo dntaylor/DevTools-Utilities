@@ -12,6 +12,7 @@ def strip_hdfs(directory):
 
 def hdfs_ls_directory(storeDir):
     '''Utility for ls'ing /hdfs at UW'''
+    if not HAS_HDFS: return []
     storeDir = strip_hdfs(storeDir)
     command = 'gfal-ls srm://cmssrm2.hep.wisc.edu:8443/srm/v2/server?SFN=/hdfs/{0}'.format(storeDir)
     out = runCommand(command)
@@ -23,6 +24,7 @@ def hdfs_ls_directory(storeDir):
 
 def get_hdfs_root_files(topDir,lastDir=''):
     '''Utility for getting all root files in a directory (and subdirectories)'''
+    if not HAS_HDFS: return []
     lsDir = strip_hdfs('{0}/{1}'.format(topDir,lastDir)) if lastDir else strip_hdfs(topDir)
     nextLevel = hdfs_ls_directory(lsDir)
     out = []

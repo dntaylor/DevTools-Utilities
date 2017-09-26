@@ -452,8 +452,8 @@ def status_condor(args):
     if args.jobName:
         workArea = get_condor_workArea(args)
         condor_dirs += sorted(glob.glob('{0}/*'.format(workArea)))
-    elif args.condorDirectories:
-        for d in args.condorDirectories:
+    elif args.directories:
+        for d in args.directories:
             condor_dirs += glob.glob(d)
     else:
         log.error("Shouldn't be possible to get here")
