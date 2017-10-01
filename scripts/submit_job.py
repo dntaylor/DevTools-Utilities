@@ -27,6 +27,7 @@ try:
     import CRABClient.Commands.submit as crabClientSubmit
     import CRABClient.Commands.status as crabClientStatus
     import CRABClient.Commands.resubmit as crabClientResubmit
+    import CRABClient.Commands.purge as crabClientPurge
     crabLoaded = True
 except:
     crabLoaded = False
@@ -351,6 +352,55 @@ def resubmit_crab(args):
         if statMap['status'] != 'SUCCESS':
             log.info('Status: {0} - {1}'.format(statMap['status'],d))
 
+def purge_crab(args):
+    '''Resubmit jobs'''
+    if not crabLoaded:
+        logging.error('You must source a crab environment to submit to crab.\nsource /cvmfs/cms.cern.ch/crab3/crab.sh')
+        return
+    crab_dirs = []
+    if args.jobName:
+        workArea = get_crab_workArea(args)
+        crab_dirs += sorted(glob.glob('{0}/*'.format(workArea)))
+    elif args.directories:
+        for d in args.directories:
+            crab_dirs += glob.glob(d)
+    else:
+        log.error("Shouldn't be possible to get here")
+
+    tblogger, logger, memhandler = initLoggers()
+    tblogger.setLevel(logging.WARNING)
+    logger.setLevel(logging.WARNING)
+    memhandler.setLevel(logging.WARNING)
+
+    purgeMap = {}
+    for d in crab_dirs:
+        if os.path.exists(d):
+            statusArgs = ['--dir',d]
+            purgeArgs = ['--cache','--dir',d]
+            try:
+                summary = crabClientStatus.status(logger,statusArgs)()
+                purge = False
+                total = 0
+                finished = 0
+                allJobStatus = {}
+                if 'jobs' in summary:
+                    for j,job in summary['jobs'].iteritems():
+                        total += 1
+                        if job['State'] not in allJobStatus: allJobStatus[job['State']] = 0
+                        allJobStatus[job['State']] += 1
+                        if job['State'] in ['finished']:
+                            finished += 1
+                if total and finished==total:
+                    purge = True
+                if purge:
+                    log.info('Purging {0}'.format(d))
+                    log.info(' '.join(['{0}: {1}'.format(state,allJobStatus[state]) for state in allowedStates if state in allJobStatus]))
+                    purgeMap[d] = crabClientPurge.purge(logger,purgeArgs)()
+            except HTTPException as hte:
+                log.warning("Submission for input directory {0} failed: {1}".format(d, hte.headers))
+            except ClientException as cle:
+                log.warning("Submission for input directory {0} failed: {1}".format(d, cle))
+
 #########################
 ### Condor submission ###
 #########################
@@ -641,6 +691,11 @@ def parse_command_line(argv):
     parser_crabResubmit = subparsers.add_parser('crabResubmit', help='Resubmit crab jobs')
     add_common_resubmit(parser_crabResubmit)
     parser_crabResubmit.set_defaults(submit=resubmit_crab)
+
+    # crabPurge
+    parser_crabPurge = subparsers.add_parser('crabPurge', help='Purge crab job cache')
+    add_common_resubmit(parser_crabPurge)
+    parser_crabPurge.set_defaults(submit=purge_crab)
 
     # condorSubmit
     parser_condorSubmit = subparsers.add_parser('condorSubmit', help='Submit jobs via condor')
