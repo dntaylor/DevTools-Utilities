@@ -75,8 +75,11 @@ def get_config(args):
         config.JobType.psetName     = args.cfg
         config.JobType.pyCfgParams  = args.cmsRunArgs
     config.JobType.sendPythonFolder = True
+    config.JobType.numCores         = args.numCores
+    config.JobType.maxMemoryMB      = args.maxMemoryMB
 
     config.Data.inputDBS            = args.inputDBS
+    config.Data.useParent           = args.useParent
     config.Data.splitting           = 'FileBased'
     config.Data.unitsPerJob         = args.filesPerJob
     #config.Data.splitting           = 'LumiBased'
@@ -96,6 +99,7 @@ def get_config(args):
     config.Site.storageSite         = args.site
     if args.scriptExe:
         config.Site.whitelist = ['T2_US_Wisconsin']
+
 
     return config
 
@@ -616,6 +620,11 @@ def add_common_inputs(parser):
     )
 
     parser.add_argument('--allowNonValid', action='store_true', help='Allow non valid datasets from DAS')
+
+    parser.add_argument('--useParent', action='store_true', help='Add parent dataset as secondary input')
+
+    parser.add_argument('--numCores', type=int, help='Number of job cores', default=1)
+    parser.add_argument('--maxMemoryMB', type=int, help='Requested memory (MB)', default=2000)
 
 
 def add_common_splitting(parser):
