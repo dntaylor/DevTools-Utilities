@@ -32,7 +32,7 @@ try:
 except:
     crabLoaded = False
 
-from DevTools.Utilities.utilities import getJson
+from DevTools.Utilities.utilities import getJson, runCommand
 from DevTools.Utilities.hdfsUtils import strip_hdfs, hdfs_ls_directory, get_hdfs_root_files, get_hdfs_directory_size
     
 UNAME = os.environ['USER']
@@ -46,6 +46,10 @@ def get_scratch_area():
     else:
         scratchDir = '/nfs_scratch/{0}'.format(UNAME) # default, wisconsin
     return scratchDir
+
+def das_query(query):
+    command = 'dasgoclient --query="{0}" --limit=0'.format(query)
+    return runCommand(command)
 
 #######################
 ### Crab submission ###
@@ -103,6 +107,27 @@ def get_config(args):
 
     return config
 
+
+def get_sites(dataset):
+    # lookup site and assign whitelist
+    store_sites = das_query('site dataset={0}'.format(dataset)).split('/n')
+    store_sites = [site for site in store_sites if 'MSS' not in site and 'Buffer' not in site]
+    locations = set()
+    for site in store_sites:
+        if any([x in site for x in ['US']]):
+            locations.add('US')
+        if any([x in site for x in ['CH','FR','IT','DE']]):
+            locations.add('EU')
+        if any([x in site for x in ['RU']]):
+            locations.add('EU')
+    # All: add self
+    sites = store_sites
+    # Site in europe: CH, FR, IT, DE
+    if 'EU' in locations: sites += ['T2_CH_*','T2_FR_*','T2_IT_*', 'T2_DE_*']
+    # Site in US: US (not needed, overflow works in US)
+    if sites==store_sites: sites = []
+    return sites
+
 def submit_das_crab(args):
     '''Submit samples using DAS'''
     tblogger, logger, memhandler = initLoggers()
@@ -126,6 +151,12 @@ def submit_das_crab(args):
     submitMap = {}
     # iterate over samples
     for sample in sampleList:
+        # lookup reasonable sites
+        if args.ignoreLocality:
+            sites = get_sites(dataset)
+            if sites: # if we found an ignoreLocality site list
+                config.Data.ignoreLocatlity  = True
+                config.Site.whitelist = sites
         _, primaryDataset, datasetTag, dataFormat = sample.split('/')
         config.General.requestName = '{0}'.format(primaryDataset)
         maxDatasetTagSize = 97-len(primaryDataset)
@@ -154,7 +185,6 @@ def submit_untracked_crab(args):
     # crab config
     config = get_config(args)
     config.Site.whitelist = [args.site] # whitelist site, run on same site as files located
-
 
     # get samples
     sampleList = hdfs_ls_directory(args.inputDirectory)
@@ -620,6 +650,7 @@ def add_common_inputs(parser):
     )
 
     parser.add_argument('--allowNonValid', action='store_true', help='Allow non valid datasets from DAS')
+    parser.add_argument('--ignoreLocality', action='store_true', help='Add a whitelist of sites in nearby region to dataset location')
 
     parser.add_argument('--useParent', action='store_true', help='Add parent dataset as secondary input')
 
