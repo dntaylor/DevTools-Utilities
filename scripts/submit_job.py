@@ -170,6 +170,10 @@ def submit_das_crab(args):
         try:
             log.info("Submitting for input dataset {0}".format(sample))
             submitMap[sample] = crabClientSubmit.submit(logger,submitArgs)()
+            # save config file text
+            outdir = os.path.join(config.General.workArea, 'crab_{0}'.format(config.General.requestName), 'inputs/crabConfig.py')
+            with open(outdir,'w') as f:
+                f.write(config.__str__())
         except HTTPException as hte:
             log.info("Submission for input dataset {0} failed: {1}".format(sample, hte.headers))
         except ClientException as cle:
