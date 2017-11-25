@@ -107,25 +107,28 @@ def get_config(args):
 
     return config
 
+def clean_site(site):
+    if '_Disk' in site: site = site.replace('_Disk','')
+    return site
 
 def get_sites(dataset):
     # lookup site and assign whitelist
-    store_sites = das_query('site dataset={0}'.format(dataset)).split('/n')
-    store_sites = [site for site in store_sites if 'MSS' not in site and 'Buffer' not in site]
+    store_sites = das_query('site dataset={0}'.format(dataset)).split('\n')
+    store_sites = [clean_site(site) for site in store_sites if 'MSS' not in site and 'Buffer' not in site and site]
     locations = set()
     for site in store_sites:
-        if any([x in site for x in ['US']]):
+        if any([x in site for x in ['_US_']]):
             locations.add('US')
-        if any([x in site for x in ['CH','FR','IT','DE']]):
+        if any([x in site for x in ['_CH_','_FR_','_IT_','_DE_']]):
             locations.add('EU')
-        if any([x in site for x in ['RU']]):
+        if any([x in site for x in ['_RU_']]):
             locations.add('EU')
     # All: add self
     sites = store_sites
     # Site in europe: CH, FR, IT, DE
     if 'EU' in locations: sites += ['T2_CH_*','T2_FR_*','T2_IT_*', 'T2_DE_*']
     # Site in US: US (not needed, overflow works in US)
-    if sites==store_sites: sites = []
+    #if sites==store_sites: sites = []
     return sites
 
 def submit_das_crab(args):
@@ -153,10 +156,12 @@ def submit_das_crab(args):
     for sample in sampleList:
         # lookup reasonable sites
         if args.ignoreLocality:
-            sites = get_sites(dataset)
+            sites = get_sites(sample)
             if sites: # if we found an ignoreLocality site list
-                config.Data.ignoreLocatlity  = True
+                config.Data.ignoreLocality  = True
                 config.Site.whitelist = sites
+            else:
+                logging.warning('Not enabling ignoreLocality, no sites found')
         _, primaryDataset, datasetTag, dataFormat = sample.split('/')
         config.General.requestName = '{0}'.format(primaryDataset)
         maxDatasetTagSize = 97-len(primaryDataset)
@@ -166,7 +171,11 @@ def submit_das_crab(args):
         config.Data.inputDataset   = sample
         # submit the job
         submitArgs = ['--config',config]
-        if args.dryrun: submitArgs += ['--dryrun']
+        if args.dryrun:
+            submitArgs += ['--dryrun']
+            print 'Will submit with args:'
+            print submitArgs
+            print config.__str__()
         try:
             log.info("Submitting for input dataset {0}".format(sample))
             submitMap[sample] = crabClientSubmit.submit(logger,submitArgs)()
