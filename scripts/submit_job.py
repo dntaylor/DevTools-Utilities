@@ -522,7 +522,8 @@ def submit_untracked_condor(args):
         if args.useAFS:
             command += ' --shared-fs'
         # output directory
-        outputDir = 'srm://cmssrm2.hep.wisc.edu:8443/srm/v2/server?SFN=/hdfs/store/user/{0}/{1}/{2}'.format(args.user,args.jobName,sample)
+        #outputDir = 'srm://cmssrm2.hep.wisc.edu:8443/srm/v2/server?SFN=/hdfs/store/user/{0}/{1}/{2}'.format(args.user,args.jobName,sample)
+        outputDir = 'srm://cmssrm.hep.wisc.edu:8443/srm/v2/server?SFN=/hdfs/store/user/{0}/{1}/{2}'.format(args.user,args.jobName,sample)
         command += ' --output-dir={0}'.format(outputDir)
         if args.useHDFS: command += ' --use-hdfs'
         if args.resubmit: command += ' --resubmit-failed-jobs'
