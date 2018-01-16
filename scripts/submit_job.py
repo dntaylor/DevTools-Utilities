@@ -484,6 +484,10 @@ def submit_untracked_condor(args):
         if os.path.exists(submitDir) and not args.resubmit:
             logging.warning('Submit directory exists {0}'.format(submitDir))
             continue
+        if args.resubmit:
+           prev = get_condor_status(submitDir)
+           badjobs = [j for j in prev if prev[j]['status'] not in ['FINISHED','RUNNING']]
+           if not badjobs: continue # don't resubmit if no failed
         # input files
         inputFiles = get_hdfs_root_files(args.inputDirectory,sample)
         totalFiles = len(inputFiles)
@@ -544,6 +548,63 @@ def submit_condor(args):
     else:
         log.warning('Unrecognized submit configuration: include --inputDirectory.')
 
+allowedStatuses = ['SUBMITTED','RUNNING','ERROR','EVICTED','ABORTED','SUSPENDED','HELD','FINISHED','UNKNOWN','FAILED']
+
+logstatuses = { # TODO: lookup possible states
+    0 : 'SUBMITTED',
+    1 : 'RUNNING',
+    2 : 'ERROR',
+    4 : 'EVICTED',
+    5 : 'FINISHED',
+    9 : 'ABORTED',
+    10: 'SUSPENDED',
+    11: 'RUNNING', #'UNSUSPENDED',
+    12: 'HELD',
+    13: 'RUNNING', #'RELEASED',
+}
+
+def get_condor_status(d):
+    results = {}
+    # get list of jobs
+    jobDirs = [j for j in glob.glob('{0}/*'.format(d)) if os.path.isdir(j)]
+    for j in jobDirs:
+        results[j] = {}
+        # completed jobs have a report.log in the submission directory
+        if os.path.exists(os.path.join(j,'report.log')):
+            # parse report.log
+            with open(os.path.join(j,'report.log')) as f:
+                try:
+                    statusString = f.readlines()[-1].strip().replace('params : ','').replace("'",'"')
+                    status = json.loads(statusString)
+                    if 'JobExitCode' in status:
+                        exitCode = int(status['JobExitCode'])
+                        if exitCode:
+                            results[j]['status'] = 'FAILED'
+                        else:
+                            results[j]['status'] = 'FINISHED'
+                    else:
+                        results[j]['status'] = 'RUNNING'
+                except:
+                    logging.error('Failed to parse {0}'.format(j))
+                    results[j]['status'] = 'UNKNOWN'
+        else:
+            # load log file
+            logfile = '{0}/{1}.log'.format(j,os.path.basename(j))
+            if os.path.exists(logfile):
+                laststatus = ''
+                with open(logfile,'r') as f:
+                    for line in f.readlines():
+                        if 'TriggerEventTypeNumber' in line:
+                            code = int(line.split()[-1])
+                            if code in logstatuses: 
+                                laststatus = logstatuses[code]
+                results[j]['status'] = laststatus
+            else:
+                results[j]['status'] = 'UNKNOWN'
+
+    return results
+
+
 def status_condor(args):
     '''Check jobs on condor'''
     condor_dirs = []
@@ -556,60 +617,10 @@ def status_condor(args):
     else:
         log.error("Shouldn't be possible to get here")
 
-    allowedStatuses = ['SUBMITTED','RUNNING','ERROR','EVICTED','ABORTED','SUSPENDED','HELD','FINISHED','UNKNOWN','FAILED']
-
-    logstatuses = { # TODO: lookup possible states
-        0 : 'SUBMITTED',
-        1 : 'RUNNING',
-        2 : 'ERROR',
-        4 : 'EVICTED',
-        5 : 'FINISHED',
-        9 : 'ABORTED',
-        10: 'SUSPENDED',
-        11: 'RUNNING', #'UNSUSPENDED',
-        12: 'HELD',
-        13: 'RUNNING', #'RELEASED',
-    }
     results = {}
     for d in sorted(condor_dirs):
         if os.path.isdir(d):
-            results[d] = {}
-            # get list of jobs
-            jobDirs = [j for j in glob.glob('{0}/*'.format(d)) if os.path.isdir(j)]
-            for j in jobDirs:
-                results[d][j] = {}
-                # completed jobs have a report.log in the submission directory
-                if os.path.exists(os.path.join(j,'report.log')):
-                    # parse report.log
-                    with open(os.path.join(j,'report.log')) as f:
-                        try:
-                            statusString = f.readlines()[-1].strip().replace('params : ','').replace("'",'"')
-                            status = json.loads(statusString)
-                            if 'JobExitCode' in status:
-                                exitCode = int(status['JobExitCode'])
-                                if exitCode:
-                                    results[d][j]['status'] = 'FAILED'
-                                else:
-                                    results[d][j]['status'] = 'FINISHED'
-                            else:
-                                results[d][j]['status'] = 'RUNNING'
-                        except:
-                            logging.error('Failed to parse {0}'.format(j))
-                            results[d][j]['status'] = 'UNKNOWN'
-                else:
-                    # load log file
-                    logfile = '{0}/{1}.log'.format(j,os.path.basename(j))
-                    if os.path.exists(logfile):
-                        laststatus = ''
-                        with open(logfile,'r') as f:
-                            for line in f.readlines():
-                                if 'TriggerEventTypeNumber' in line:
-                                    code = int(line.split()[-1])
-                                    if code in logstatuses: 
-                                        laststatus = logstatuses[code]
-                        results[d][j]['status'] = laststatus
-                    else:
-                        results[d][j]['status'] = 'UNKNOWN'
+            results[d] = get_condor_status(d)
 
     # print out the summary
     total = {}
