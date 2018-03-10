@@ -30,7 +30,7 @@ def get_hdfs_root_files(topDir,lastDir=''):
     nextLevel = hdfs_ls_directory(lsDir)
     out = []
     for nl in nextLevel:
-        if nl=='failed': # dont include
+        if nl in ['failed','log']: # dont include
             continue
         elif nl[-4:]=='root': # its a root file
             out += ['{0}/{1}'.format(lsDir,nl)]
