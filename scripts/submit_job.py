@@ -81,6 +81,8 @@ def get_config(args):
     config.JobType.sendPythonFolder = True
     config.JobType.numCores         = args.numCores
     config.JobType.maxMemoryMB      = args.maxMemoryMB
+    if args.external:
+        config.JobType.sendExternalFolder = True
 
     config.Data.inputDBS            = args.inputDBS
     config.Data.useParent           = args.useParent
@@ -731,6 +733,7 @@ def add_common_crab(parser):
     )
     parser.add_argument('--dryrun', action='store_true', help='Do not submit jobs')
     parser.add_argument('--user', type=str, default=UNAME, help='Username for grid storage. i.e. /store/user/[username]/')
+    parser.add_argument('--external', action='store_true', help='Send external folder')
 
 
 def parse_command_line(argv):
