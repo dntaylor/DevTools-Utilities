@@ -114,10 +114,20 @@ def sqrtWithError(a):
 def sOverB(s,b):
     return s[0]/b[0] if b[0] else 0.
 
+eh =  [1.15, 1.36, 1.53, 1.73, 1.98, 2.21, 2.42, 2.61, 2.80, 3.00 ]
+el =  [0.00, 1.00, 2.00, 2.14, 2.30, 2.49, 2.68, 2.86, 3.03, 3.19 ]
+
+def setPoissonUncertainty(b):
+    bVal, bErr = b
+    bErr = math.sqrt(bVal) if bVal>9 else max(el[int(bVal)],eh[int(bVal)])
+    b = (bVal, bErr)
+    return b
+
 def poissonSignificance(s,b):
     return s[0]/b[0]**0.5 if b[0] else 0.
 
-def poissonSignificanceWithError(s,b):
+def poissonSignificanceWithError(s,b,doPoisson=True):
+    if doPoisson: b = setPoissonUncertainty(b)
     return s[0]/(b[0]+b[1]**2)**0.5 if b[0] or b[1] else 0.
 
 def asimovSignificance(s,b):
@@ -129,8 +139,9 @@ def asimovSignificance(s,b):
     #return (2*(sPlusB*math.log(1+sOverB)-1))**0.5
     return (2*(sPlusB*math.log(1+sOverB)-s[0]))**0.5 # another source
 
-def asimovSignificanceWithError(s,b):
+def asimovSignificanceWithError(s,b,doPoisson=True):
     if b[1]>b[0]: b = (b[1],b[1]) # avoid negative stuff
+    if doPoisson: b = setPoissonUncertainty(b)
     if not b[0]: return 0.
     if not b[1]: return asimovSignificance(s,b) # no error on background
     sPlusB = s[0]+b[0]

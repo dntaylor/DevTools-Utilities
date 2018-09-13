@@ -14,8 +14,7 @@ def hdfs_ls_directory(storeDir):
     '''Utility for ls'ing /hdfs at UW'''
     if not HAS_HDFS: return []
     storeDir = strip_hdfs(storeDir)
-    command = 'gfal-ls srm://cmssrm.hep.wisc.edu:8443/srm/v2/server?SFN=/hdfs/{0}'.format(storeDir)
-    #command = 'gfal-ls srm://cmssrm2.hep.wisc.edu:8443/srm/v2/server?SFN=/hdfs/{0}'.format(storeDir)
+    command = 'gfal-ls gsiftp://cms-lvs-gridftp.hep.wisc.edu//hdfs/{0}'.format(storeDir)
     out = runCommand(command)
     if 'gfal-ls' in out:
         logging.error(command)
@@ -54,8 +53,7 @@ def get_hdfs_directory_size(directory):
         totalSize = 0.
         return totalSize # sorry, don't do it this way, too slow
         for fname in get_hdfs_root_files(directory):
-            command = 'gfal-ls -l srm://cmssrm.hep.wisc.edu:8443/srm/v2/server?SFN=/hdfs{0} | awk \'{{print $5;}}\''.format(strip_hdfs(directory))
-            #command = 'gfal-ls -l srm://cmssrm2.hep.wisc.edu:8443/srm/v2/server?SFN=/hdfs{0} | awk \'{{print $5;}}\''.format(strip_hdfs(directory))
+            command = 'gfal-ls -l gsiftp://cms-lvs-gridftp.hep.wisc.edu//hdfs{0} | awk \'{{print $5;}}\''.format(strip_hdfs(directory))
             out = runCommand(command)
             try:
                 totalSize += float(out.split()[0])

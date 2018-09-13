@@ -528,8 +528,8 @@ def submit_untracked_condor(args):
         if args.useAFS:
             command += ' --shared-fs'
         # output directory
-        #outputDir = 'srm://cmssrm2.hep.wisc.edu:8443/srm/v2/server?SFN=/hdfs/store/user/{0}/{1}/{2}'.format(args.user,args.jobName,sample)
-        outputDir = 'srm://cmssrm.hep.wisc.edu:8443/srm/v2/server?SFN=/hdfs/store/user/{0}/{1}/{2}'.format(args.user,args.jobName,sample)
+        # srm no longer needed at uw
+        outputDir = '/store/user/{0}/{1}/{2}'.format(args.user,args.jobName,sample)
         command += ' --output-dir={0}'.format(outputDir)
         if args.useHDFS: command += ' --use-hdfs'
         if args.resubmit: command += ' --resubmit-failed-jobs'
@@ -563,6 +563,7 @@ logstatuses = { # TODO: lookup possible states
     11: 'RUNNING', #'UNSUSPENDED',
     12: 'HELD',
     13: 'RUNNING', #'RELEASED',
+    99: 'FAILED', # custom
 }
 
 def get_condor_status(d):
@@ -594,12 +595,20 @@ def get_condor_status(d):
             logfile = '{0}/{1}.log'.format(j,os.path.basename(j))
             if os.path.exists(logfile):
                 laststatus = ''
+                # look up by condor status
                 with open(logfile,'r') as f:
                     for line in f.readlines():
                         if 'TriggerEventTypeNumber' in line:
                             code = int(line.split()[-1])
                             if code in logstatuses: 
                                 laststatus = logstatuses[code]
+                # alternatively, get last "ReturnValue"
+                with open(logfile,'r') as f:
+                    for line in f.readlines():
+                        if 'ReturnValue' in line:
+                            code = int(line.split()[-1])
+                            if code: 
+                                laststatus = 'FAILED'
                 results[j]['status'] = laststatus
             else:
                 results[j]['status'] = 'UNKNOWN'
