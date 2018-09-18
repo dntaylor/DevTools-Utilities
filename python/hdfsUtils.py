@@ -14,7 +14,7 @@ def hdfs_ls_directory(storeDir):
     '''Utility for ls'ing /hdfs at UW'''
     if not HAS_HDFS: return []
     storeDir = strip_hdfs(storeDir)
-    command = 'gfal-ls gsiftp://cms-lvs-gridftp.hep.wisc.edu//hdfs/{0}'.format(storeDir)
+    command = 'gfal-ls gsiftp://cms-lvs-gridftp.hep.wisc.edu/{0}'.format(storeDir)
     out = runCommand(command)
     if 'gfal-ls' in out:
         logging.error(command)
