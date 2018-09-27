@@ -32,6 +32,21 @@ def print_detailed_hpp3l(rtrow):
     print rtrow.hpp1_pt, rtrow.hpp2_pt, rtrow.hm1_pt
     print rtrow.hpp_mass, rtrow.hm_mt
 
+def print_detailed_mmtt(row,header=False):
+    varsToPrint = [
+        'am1_pt', 'am1_eta', 'am1_phi', 'am1_isolation',
+        'am2_pt', 'am2_eta', 'am2_phi', 'am2_isolation',
+        'atm_pt', 'atm_eta', 'atm_phi', 'atm_isolation',
+        'ath_pt', 'ath_eta', 'ath_phi', 'ath_byIsolationMVArun2v1DBoldDMwLTraw', 'ath_decayMode',
+        'amm_mass', 'amm_pt', 'amm_eta', 'amm_phi', 'amm_deltaR',
+        'att_mass', 'att_pt', 'att_eta', 'att_phi', 'att_deltaR',
+        'h_mass', 'h_pt', 'h_eta', 'h_phi', 'h_massKinFit',
+    ]
+    if header:
+        print 'run:lumi:event:'+':'.join(varsToPrint)
+    else:
+        print ':'.join([str(row.run), str(row.lumi), str(row.event)]+['{:.3f}'.format(getattr(row,v)) for v in varsToPrint])
+
 def print_detailed_mini(rtrow):
     print '{0}:{1}:{2}'.format(rtrow.run, rtrow.lumi, rtrow.event)
     for obj in ['electrons','muons','taus','jets']:
@@ -98,6 +113,8 @@ def main(argv=None):
                args.events += [line.strip()]
 
     rtrow = selectedEvents
+    if args.detailed:
+        if args.tree=='MuMuTauTauTree': print_detailed_mmtt(rtrow,header=True)
     for r in xrange(rtrow.GetEntries()):
         rtrow.GetEntry(r)
         eventkey = '{0}:{1}:{2}'.format(rtrow.run, rtrow.lumi, rtrow.event)
@@ -107,6 +124,7 @@ def main(argv=None):
             if args.tree=='DYTree': print_detailed_dy(rtrow)
             if args.tree=='WZTree': print_detailed_wz(rtrow)
             if args.tree=='Hpp3lTree': print_detailed_hpp3l(rtrow)
+            if args.tree=='MuMuTauTauTree': print_detailed_mmtt(rtrow)
         else:
             print eventkey
 
