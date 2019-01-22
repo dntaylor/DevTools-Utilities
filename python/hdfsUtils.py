@@ -15,6 +15,7 @@ def hdfs_ls_directory(storeDir):
     if not HAS_HDFS: return []
     storeDir = strip_hdfs(storeDir)
     command = 'gfal-ls gsiftp://cms-lvs-gridftp.hep.wisc.edu/{0}'.format(storeDir)
+    command = 'ls /hdfs/{}'.format(storeDir)
     out = runCommand(command)
     if 'gfal-ls' in out:
         logging.error(command)
@@ -27,6 +28,11 @@ def get_hdfs_root_files(topDir,lastDir=''):
     if not HAS_HDFS: return []
     lsDir = strip_hdfs('{0}/{1}'.format(topDir,lastDir)) if lastDir else strip_hdfs(topDir)
     nextLevel = hdfs_ls_directory(lsDir)
+    if 'ls:' in nextLevel:
+        logging.error('Problem with directory')
+        logging.error(topDir)
+        logging.error(lastDir)
+        return []
     out = []
     for nl in nextLevel:
         if nl in ['failed','log']: # dont include
@@ -41,7 +47,7 @@ def get_hdfs_directory_size(directory):
     '''Get the size of a hdfs directory (in bytes).'''
     if HAS_HDFS:
         directory = strip_hdfs(directory)
-        command = 'gsido hdfs dfs -du -s {0}'.format(directory)
+        command = 'hdfs dfs -du -s {0}'.format(directory)
         out = runCommand(command)
         try:
             return float(out.split()[0])
