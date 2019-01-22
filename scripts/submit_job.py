@@ -103,8 +103,8 @@ def get_config(args):
         config.Data.allowNonValidInputDataset = True
 
     config.Site.storageSite         = args.site
-    if args.scriptExe:
-        config.Site.whitelist = ['T2_US_Wisconsin']
+    #if args.scriptExe:
+    #    config.Site.whitelist = ['T2_US_Wisconsin']
 
 
     return config
