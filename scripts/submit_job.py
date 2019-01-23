@@ -81,6 +81,7 @@ def get_config(args):
     config.JobType.sendPythonFolder = True
     config.JobType.numCores         = args.numCores
     config.JobType.maxMemoryMB      = args.maxMemoryMB
+    config.JobType.maxJobRuntimeMin = args.maxJobRuntimeMin
     if args.external:
         config.JobType.sendExternalFolder = True
 
@@ -692,6 +693,7 @@ def add_common_inputs(parser):
 
     parser.add_argument('--numCores', type=int, help='Number of job cores', default=1)
     parser.add_argument('--maxMemoryMB', type=int, help='Requested memory (MB)', default=2000)
+    parser.add_argument('--maxJobRuntimeMin', type=int, help='Requested runtime', default=1315)
 
 
 def add_common_splitting(parser):
