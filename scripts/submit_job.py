@@ -255,6 +255,11 @@ def submit_untracked_crab(args):
 
 def submit_crab(args):
     '''Create submission script for crab'''
+    # check if it starts with a number
+    if args.jobName[0].isdigit():
+        logging.error('The crab jobName is invalid. It cannot start with a number. {}'.format(args.jobName))
+        return
+
     if not crabLoaded:
         logging.error('You must source a crab environment to submit to crab.\nsource /cvmfs/cms.cern.ch/crab3/crab.sh')
         return
