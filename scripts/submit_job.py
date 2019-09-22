@@ -104,6 +104,8 @@ def get_config(args):
         #config.Data.unitsPerJob     = args.lumisPerJob
     if args.allowNonValid:
         config.Data.allowNonValidInputDataset = True
+    if args.allowUndistributedCMSSW:
+        config.JobType.allowUndistributedCMSSW = True
 
     config.Site.storageSite         = args.site
     #if args.scriptExe:
@@ -746,6 +748,7 @@ def add_common_condor(parser):
 
 def add_common_crab(parser):
     parser.add_argument('--publish', action='store_true', help='Publish output to DBS')
+    parser.add_argument('--allowUndistributedCMSSW', action='store_true', help='Allow undistributed')
     parser.add_argument('--site', type=str, default='T2_US_Wisconsin',
         help='Site to write output files. Can check write pemissions with `crab checkwrite --site=<SITE>`.'
     )
