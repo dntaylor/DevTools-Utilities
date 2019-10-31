@@ -40,7 +40,7 @@ def get_hdfs_root_files(topDir,lastDir='',extension='root'):
         elif nl[-1*len(extension):]==extension: # its a root file
             out += ['{0}/{1}'.format(lsDir,nl)]
         else: # keep going down
-            out += get_hdfs_root_files(lsDir,nl)
+            out += get_hdfs_root_files(lsDir,nl,extension)
     return out
 
 def get_hdfs_directory_size(directory):
