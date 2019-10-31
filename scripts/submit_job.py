@@ -89,6 +89,8 @@ def get_config(args):
     config.Data.useParent           = args.useParent
     config.Data.splitting           = 'FileBased'
     config.Data.unitsPerJob         = args.filesPerJob
+    if args.totalUnits:
+        config.Data.totalUnits      = args.totalUnits
     #config.Data.splitting           = 'LumiBased'
     #config.Data.unitsPerJob         = 10
     #config.Data.splitting           = 'EventAwareLumiBased'
@@ -102,6 +104,8 @@ def get_config(args):
         #config.Data.unitsPerJob     = args.lumisPerJob
     if args.allowNonValid:
         config.Data.allowNonValidInputDataset = True
+    if args.allowUndistributedCMSSW:
+        config.JobType.allowUndistributedCMSSW = True
 
     config.Site.storageSite         = args.site
     #if args.scriptExe:
@@ -744,11 +748,13 @@ def add_common_condor(parser):
 
 def add_common_crab(parser):
     parser.add_argument('--publish', action='store_true', help='Publish output to DBS')
+    parser.add_argument('--allowUndistributedCMSSW', action='store_true', help='Allow undistributed')
     parser.add_argument('--site', type=str, default='T2_US_Wisconsin',
         help='Site to write output files. Can check write pemissions with `crab checkwrite --site=<SITE>`.'
     )
     parser.add_argument('--dryrun', action='store_true', help='Do not submit jobs')
     parser.add_argument('--user', type=str, default=UNAME, help='Username for grid storage. i.e. /store/user/[username]/')
+    parser.add_argument('--totalUnits', type=int, default=0, help='Limit the number of jobs created')
     parser.add_argument('--external', action='store_true', help='Send external folder')
 
 
