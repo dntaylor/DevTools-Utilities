@@ -23,7 +23,7 @@ def hdfs_ls_directory(storeDir):
         return []
     return out.split()
 
-def get_hdfs_root_files(topDir,lastDir=''):
+def get_hdfs_root_files(topDir,lastDir='',extension='root'):
     '''Utility for getting all root files in a directory (and subdirectories)'''
     if not HAS_HDFS: return []
     lsDir = strip_hdfs('{0}/{1}'.format(topDir,lastDir)) if lastDir else strip_hdfs(topDir)
@@ -37,7 +37,7 @@ def get_hdfs_root_files(topDir,lastDir=''):
     for nl in nextLevel:
         if nl in ['failed','log']: # dont include
             continue
-        elif nl[-4:]=='root': # its a root file
+        elif nl[-1*len(extension):]==extension: # its a root file
             out += ['{0}/{1}'.format(lsDir,nl)]
         else: # keep going down
             out += get_hdfs_root_files(lsDir,nl)
